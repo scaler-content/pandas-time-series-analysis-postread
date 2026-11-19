@@ -1,0 +1,935 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Pandas 5 · Time Series Analysis</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;700;800&family=Roboto+Mono:wght@400;500&display=swap');
+
+  :root {
+    --bg:       #f5f0eb;
+    --surface:  #ffffff;
+    --surface2: #fdf6f0;
+    --surface3: #faeee4;
+    --border:   #e8d5c4;
+    --border2:  #d4b89e;
+    --text:     #1f1008;
+    --muted:    #7a5a46;
+    --rust:     #9b3d14;
+    --rust2:    #c4511c;
+    --rust-lt:  #f0e4da;
+    --amber:    #c4511c;
+    --amber2:   #e8814a;
+    --coral:    #dc2626;
+    --green:    #15803d;
+    --teal:     #0e7490;
+    --blue:     #1d4ed8;
+    --purple:   #7c3aed;
+    --slate:    #57534e;
+    --radius:   12px;
+    --mono: 'Roboto Mono', 'Fira Code', monospace;
+    --sans: 'Outfit', system-ui, sans-serif;
+    --cyan:        #9b3d14;
+    --surface-code:#fdf6f0;
+    --green2:      #15803d;
+    --gold:        #c4511c;
+    --gold2:       #e8814a;
+  }
+
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+  html { scroll-behavior: smooth; }
+  body {
+    background: var(--bg); color: var(--text);
+    font-family: var(--sans); font-size: 15px; line-height: 1.75;
+    max-width: 880px; margin: 0 auto; padding: 24px 20px 60px;
+  }
+
+  #progressBar {
+    position: fixed; top: 0; left: 0; height: 3px; width: 0%;
+    background: linear-gradient(90deg, var(--rust), var(--amber2), var(--rust2));
+    z-index: 1000; transition: width .1s linear;
+    box-shadow: 0 0 10px rgba(155,61,20,.2);
+  }
+
+  .hero {
+    position: relative; overflow: hidden;
+    background: linear-gradient(135deg, #8b3a1a 0%, #a04020 50%, #7a3010 100%);
+    border: 1px solid var(--border2); border-radius: 18px;
+    padding: 40px 36px 32px; margin-bottom: 32px;
+  }
+  .hero::before {
+    content: ''; position: absolute; top: -80px; right: -80px;
+    width: 300px; height: 300px;
+    background: radial-gradient(circle, rgba(220,100,30,.12) 0%, transparent 65%);
+    pointer-events: none;
+  }
+  .hero-eyebrow {
+    display: inline-flex; align-items: center; gap: 8px;
+    font-size: 11px; font-weight: 700; letter-spacing: 2px;
+    text-transform: uppercase; color: rgba(255,235,210,.95);
+    background: rgba(255,255,255,.15); border: 1px solid rgba(255,255,255,.35);
+    border-radius: 20px; padding: 4px 12px; margin-bottom: 14px;
+  }
+  .hero h1 { font-size: 30px; font-weight: 800; line-height: 1.2; margin-bottom: 10px; color: #fff; }
+  .hero h1 span {
+    background: linear-gradient(135deg, #fff, rgba(255,220,180,.9));
+    -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text;
+  }
+  .hero-sub { color: rgba(255,235,210,.85); font-size: 14.5px; max-width: 600px; margin-bottom: 20px; }
+  .chip-row { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 20px; }
+  .chip { font-size: 11.5px; font-weight: 600; padding: 4px 12px; border-radius: 20px; border: 1px solid; }
+  .chip-c { color: var(--cyan);   border-color: rgba(155,61,20,.3);  background: rgba(155,61,20,.07); }
+  .chip-a { color: var(--amber);  border-color: rgba(196,81,28,.3);  background: rgba(196,81,28,.07); }
+  .chip-b { color: var(--blue);   border-color: rgba(29,78,216,.3);  background: rgba(29,78,216,.07); }
+  .chip-g { color: var(--green);  border-color: rgba(21,128,61,.3);  background: rgba(21,128,61,.07); }
+  .chip-p { color: var(--purple); border-color: rgba(124,58,237,.3); background: rgba(124,58,237,.07);}
+  .hero .chip-c { color: rgba(255,235,210,.9); border-color: rgba(255,255,255,.25); background: rgba(255,255,255,.12); }
+  .hero .chip-a { color: rgba(255,235,210,.9); border-color: rgba(255,255,255,.25); background: rgba(255,255,255,.12); }
+  .hero .chip-b { color: rgba(200,220,255,.95); border-color: rgba(200,220,255,.35); background: rgba(255,255,255,.12); }
+  .hero .chip-g { color: rgba(180,255,200,.9); border-color: rgba(180,255,200,.35);  background: rgba(255,255,255,.12); }
+  .hero .chip-p { color: rgba(220,200,255,.95); border-color: rgba(220,200,255,.35); background: rgba(255,255,255,.12); }
+
+  .toc { display: flex; flex-wrap: wrap; gap: 7px; }
+  .toc a {
+    font-size: 11.5px; font-weight: 600; padding: 4px 10px;
+    border-radius: 16px; background: rgba(155,61,20,.05);
+    color: var(--cyan); text-decoration: none; border: 1px solid rgba(155,61,20,.25);
+    transition: background .15s;
+  }
+  .toc a:hover { background: rgba(155,61,20,.1); }
+
+  .section {
+    background: var(--surface); border: 1px solid var(--border);
+    border-radius: var(--radius); padding: 30px 30px 26px;
+    margin-bottom: 24px; position: relative; overflow: hidden;
+  }
+  .section::before {
+    content: ''; position: absolute; top: 0; left: 0;
+    width: 3px; height: 100%;
+    background: linear-gradient(180deg, var(--rust), var(--amber2), transparent);
+    border-radius: 3px 0 0 3px;
+  }
+  .sec-header { display: flex; align-items: flex-start; gap: 14px; margin-bottom: 22px; }
+  .sec-num {
+    font-family: var(--mono); font-size: 11px; font-weight: 700;
+    color: var(--rust); background: rgba(155,61,20,.1);
+    border: 1px solid rgba(155,61,20,.25);
+    border-radius: 6px; padding: 3px 9px; white-space: nowrap; margin-top: 3px;
+  }
+  .sec-title { font-size: 18px; font-weight: 800; line-height: 1.25; }
+  .sec-title .hl { color: var(--cyan); }
+  .sec-quote {
+    font-size: 14.5px; font-style: italic; color: var(--muted);
+    border-left: 2px solid var(--cyan); padding-left: 14px; margin-bottom: 18px;
+  }
+
+  h3 { font-size: 11px; font-weight: 700; color: var(--cyan); text-transform: uppercase; letter-spacing: 1.5px; margin: 22px 0 10px; }
+  p  { color: var(--text); margin-bottom: 12px; }
+  strong { color: var(--rust); font-weight: 700; }
+  em { color: var(--cyan); font-style: normal; font-weight: 600; }
+  ul, ol { padding-left: 20px; margin-bottom: 12px; }
+  li { margin-bottom: 5px; }
+
+  pre {
+    background: #fdf6f0; border: 1px solid var(--border); border-radius: 10px;
+    padding: 16px 18px; font-family: var(--mono); font-size: 13px;
+    line-height: 1.65; overflow-x: auto; margin: 12px 0;
+  }
+  code { font-family: var(--mono); font-size: .9em; }
+  .kw  { color: #1d4ed8; }
+  .fn  { color: var(--cyan); }
+  .str { color: var(--green); }
+  .num { color: var(--amber); }
+  .cmt { color: #7a5a46; font-style: italic; }
+  .cls { color: var(--amber2); }
+
+  .out {
+    background: #fdf6f0; border: 1px solid var(--border); border-radius: 8px;
+    padding: 11px 16px; font-family: var(--mono); font-size: 12.5px;
+    color: var(--green); margin: 4px 0 14px;
+  }
+  .out-lbl { font-size: 10px; color: var(--muted); letter-spacing: 1px; margin-bottom: 4px; }
+
+  .callout { border-radius: 10px; padding: 14px 16px; margin: 14px 0; display: flex; gap: 12px; align-items: flex-start; }
+  .callout-icon { font-size: 17px; flex-shrink: 0; margin-top: 1px; }
+  .callout-body { flex: 1; }
+  .callout-body b { display: block; font-size: 13px; color: var(--amber2); margin-bottom: 4px; }
+  .callout-body p { margin: 0; font-size: 13.5px; }
+  .c-cyan   { background: rgba(155,61,20,.06);  border-left: 3px solid var(--cyan); }
+  .c-amber  { background: rgba(196,81,28,.06);  border-left: 3px solid var(--amber); }
+  .c-red    { background: rgba(220,38,38,.06);  border-left: 3px solid var(--coral); }
+  .c-green  { background: rgba(21,128,61,.06);  border-left: 3px solid var(--green); }
+  .c-purple { background: rgba(124,58,237,.06); border-left: 3px solid var(--purple);}
+
+  .diagram {
+    background: var(--surface2); border: 1px solid var(--border);
+    border-radius: 12px; padding: 20px; margin: 16px 0; text-align: center;
+  }
+  .diagram figcaption { font-size: 12px; color: var(--muted); margin-top: 12px; font-style: italic; }
+
+  .demo {
+    background: var(--surface2); border: 1px solid var(--border);
+    border-radius: 12px; padding: 20px 22px; margin: 16px 0;
+  }
+  .demo-hd {
+    font-size: 11.5px; font-weight: 700; color: var(--cyan);
+    text-transform: uppercase; letter-spacing: 1.2px;
+    margin-bottom: 14px; display: flex; align-items: center; gap: 7px;
+  }
+  .demo-hd::before { content: '⚡'; font-size: 14px; }
+
+  .btn {
+    display: inline-flex; align-items: center; gap: 6px;
+    padding: 7px 15px; border-radius: 8px; font-family: var(--sans);
+    font-size: 13px; font-weight: 700; cursor: pointer; border: none;
+    transition: opacity .15s, transform .1s;
+  }
+  .btn:hover { opacity: .85; transform: translateY(-1px); }
+  .btn-c  { background: var(--rust);   color: #fff; }
+  .btn-a  { background: var(--amber);  color: #fff; }
+  .btn-b  { background: var(--blue);   color: #fff; }
+  .btn-g  { background: var(--green);  color: #fff; }
+  .btn-p  { background: var(--purple); color: #fff; }
+  .btn-sm { padding: 5px 11px; font-size: 12px; }
+  .btn-row { display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 12px; }
+
+  .demo-out {
+    background: #fdf6f0; border: 1px solid var(--border); border-radius: 8px;
+    padding: 12px 15px; font-family: var(--mono); font-size: 13px;
+    min-height: 40px; color: var(--cyan); white-space: pre-wrap; margin-top: 10px;
+  }
+
+  input[type=range] { accent-color: var(--cyan); width: 100%; }
+  select, input[type=text] {
+    background: var(--surface2); border: 1px solid var(--border);
+    border-radius: 7px; color: var(--text); font-family: var(--mono);
+    font-size: 13px; padding: 6px 10px;
+  }
+  select:focus, input[type=text]:focus { outline: none; border-color: var(--cyan); }
+  label { font-size: 13px; color: var(--muted); display: block; margin-bottom: 6px; }
+
+  .tbl { width: 100%; border-collapse: collapse; margin: 16px 0; font-size: 14px; }
+  .tbl th {
+    background: var(--surface3); padding: 10px 14px; text-align: left;
+    font-size: 11px; font-weight: 700; text-transform: uppercase;
+    letter-spacing: .8px; color: var(--muted); border-bottom: 2px solid var(--border2);
+  }
+  .tbl td { padding: 9px 14px; border-bottom: 1px solid var(--border); vertical-align: top; }
+  .tbl tr:last-child td { border-bottom: none; }
+  .tbl tr:hover td { background: rgba(155,61,20,.04); }
+  .tbl code { font-family: var(--mono); font-size: 12px; color: var(--cyan); }
+  .yes { color: var(--green); font-weight: 700; }
+  .no  { color: var(--coral); font-weight: 700; }
+
+  .story {
+    background: linear-gradient(135deg, var(--surface2), var(--surface3));
+    border: 1px solid rgba(155,61,20,.25); border-radius: 12px; padding: 22px 24px; margin-bottom: 20px;
+  }
+  .story-label { font-size: 11px; font-weight: 700; color: var(--cyan); text-transform: uppercase; letter-spacing: 1px; margin-bottom: 10px; }
+
+  .split { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; margin: 14px 0; }
+  @media (max-width: 600px) { .split { grid-template-columns: 1fr; } }
+
+  .badge { display: inline-block; font-size: 11px; font-weight: 700; padding: 2px 8px; border-radius: 4px; margin-right: 4px; vertical-align: middle; }
+  .badge-c { background: rgba(155,61,20,.1);  color: var(--rust);  border: 1px solid rgba(155,61,20,.3); }
+  .badge-g { background: rgba(21,128,61,.1);  color: var(--green); border: 1px solid rgba(21,128,61,.3); }
+  .badge-r { background: rgba(220,38,38,.1);  color: var(--coral); border: 1px solid rgba(220,38,38,.3); }
+
+  .s-row { display: flex; gap: 10px; padding: 9px 0; border-bottom: 1px solid var(--border); align-items: flex-start; }
+  .s-row:last-child { border-bottom: none; }
+  .s-q { flex: 0 0 230px; font-size: 13px; color: var(--muted); }
+  .s-code { flex: 1; font-family: var(--mono); font-size: 12px; color: var(--rust); background: var(--surface2); border-radius: 5px; padding: 4px 9px; }
+
+  .q-card { background: var(--surface2); border: 1px solid var(--border); border-radius: 10px; padding: 18px 20px; margin-bottom: 14px; }
+  .q-text { font-weight: 700; margin-bottom: 12px; font-size: 14.5px; }
+  .q-opt {
+    display: flex; align-items: center; gap: 10px;
+    padding: 8px 12px; border-radius: 7px; cursor: pointer;
+    margin-bottom: 6px; border: 1px solid transparent;
+    transition: all .15s; font-size: 13.5px;
+  }
+  .q-opt:hover { background: rgba(155,61,20,.06); border-color: rgba(155,61,20,.25); }
+  .q-opt input { accent-color: var(--cyan); }
+  .q-opt.correct { background: rgba(21,128,61,.1);  border-color: var(--green); }
+  .q-opt.wrong   { background: rgba(220,38,38,.08); border-color: var(--coral); }
+  .q-fb { font-size: 13px; padding: 10px 12px; border-radius: 7px; margin-top: 10px; display: none; }
+  .q-fb.show { display: block; }
+  .q-fb.ok  { background: rgba(21,128,61,.1);  color: var(--green); }
+  .q-fb.err { background: rgba(220,38,38,.08); color: var(--coral); }
+
+  /* timeline vis */
+  .timeline-wrap { overflow-x: auto; margin: 16px 0; }
+</style>
+</head>
+<body>
+<div id="progressBar"></div>
+
+<!-- ═══════════ HERO ═══════════ -->
+<div class="hero">
+  <div class="hero-eyebrow">🐼 Pandas · Lecture 5 of 5</div>
+  <h1>Time Series <span>Analysis</span></h1>
+  <p class="hero-sub">Almost every business report has time on the x-axis. Today you build the full toolkit to go from a raw date column to a VP-ready sales health report.</p>
+  <div class="chip-row">
+    <span class="chip chip-c">Datetime Parsing</span>
+    <span class="chip chip-a">DatetimeIndex</span>
+    <span class="chip chip-b">Resample</span>
+    <span class="chip chip-g">Rolling Average</span>
+    <span class="chip chip-p">shift &amp; pct_change</span>
+    <span class="chip chip-c">Fill Strategies</span>
+  </div>
+  <div class="toc">
+    <a href="#s1">01 Datetime Parsing</a>
+    <a href="#s2">02 DatetimeIndex</a>
+    <a href="#s3">03 Resample</a>
+    <a href="#s4">04 Rolling Average</a>
+    <a href="#s5">05 Period-over-Period</a>
+    <a href="#s6">06 Fill Strategies</a>
+    <a href="#s7">07 Quiz</a>
+  </div>
+</div>
+
+<!-- ═══════════ STORY ═══════════ -->
+<div class="story">
+  <div class="story-label">📋 Business Setup — The Superstore Sales Brief</div>
+  <p>The VP of Sales has handed Dev a CSV of 9,800 orders from a US retail chain — four years, 2015 through 2018 — and one clear ask:</p>
+  <p><em>"Give me a full 4-year sales health report. Show me the revenue trend, smooth out the noise, flag any unusual spikes, and tell me our momentum heading into Q1 2019."</em></p>
+  <p>That is six deliverables built from one dataset — and each one maps to exactly one Pandas time series method. By the end of this lecture, you will have answered every part of that ask.</p>
+  <table class="tbl">
+    <thead><tr><th>VP Ask</th><th>Method</th></tr></thead>
+    <tbody>
+      <tr><td>Revenue trend by month / quarter</td><td><code>resample('ME').sum()</code></td></tr>
+      <tr><td>Smooth out the daily noise</td><td><code>rolling(30).mean()</code></td></tr>
+      <tr><td>Month-over-month growth</td><td><code>pct_change()</code></td></tr>
+      <tr><td>Year-over-year comparison</td><td><code>pct_change(periods=12)</code></td></tr>
+      <tr><td>Q1 2019 momentum check</td><td><code>pct_change(periods=4)</code> + pivot_table</td></tr>
+      <tr><td>Handle missing days</td><td><code>ffill() / fillna(0) / interpolate()</code></td></tr>
+    </tbody>
+  </table>
+</div>
+
+<!-- ═══════════ S1: DATETIME PARSING ═══════════ -->
+<div class="section" id="s1">
+  <div class="sec-header">
+    <span class="sec-num">01</span>
+    <div><div class="sec-title">Datetime Parsing <span class="hl">&amp; .dt Accessor</span></div></div>
+  </div>
+  <p class="sec-quote">"Before Pandas can work with time, it needs to know a column is time — not text."</p>
+
+  <p>When you load a CSV, Pandas reads date columns as plain strings. As long as a date is a string, you cannot sort by it, slice a year out of it, or do time-based math. <strong>Step one in every time series project: convert to datetime.</strong></p>
+
+  <pre><code><span class="cmt"># Default — Pandas reads dates as strings</span>
+<span class="kw">print</span>(df[<span class="str">'Order Date'</span>].dtype)   <span class="cmt"># → object (string)</span></code></pre>
+
+  <div class="callout c-red">
+    <span class="callout-icon">⚠️</span>
+    <div class="callout-body">
+      <b>The silent day-month swap bug</b>
+      <p>Our data uses <strong>DD-MM-YYYY</strong> (day first). Without a <code>format=</code> argument, Pandas defaults to MM-DD-YYYY. So <code>"03-11-2015"</code> becomes 11 March 2015 — no error raised, just a wrong date. Always use an explicit format string.</p>
+    </div>
+  </div>
+
+  <pre><code><span class="cmt"># ✓ Correct — explicit format, no ambiguity</span>
+df[<span class="str">'Order Date'</span>] = pd.<span class="fn">to_datetime</span>(df[<span class="str">'Order Date'</span>], format=<span class="str">'%d-%m-%Y'</span>)
+<span class="kw">print</span>(df[<span class="str">'Order Date'</span>].dtype)   <span class="cmt"># → datetime64[us]</span></code></pre>
+
+  <h3>The .dt Accessor — unlock date components</h3>
+  <p>Once a column is datetime, <code>.dt</code> gives you every calendar property as a new column, ready for <code>groupby</code>.</p>
+
+  <pre><code>df[<span class="str">'Year'</span>]    = df[<span class="str">'Order Date'</span>].dt.year
+df[<span class="str">'Month'</span>]   = df[<span class="str">'Order Date'</span>].dt.month
+df[<span class="str">'Quarter'</span>] = df[<span class="str">'Order Date'</span>].dt.quarter
+df[<span class="str">'DayName'</span>] = df[<span class="str">'Order Date'</span>].dt.day_name()</code></pre>
+
+  <table class="tbl">
+    <thead><tr><th>.dt property</th><th>Returns</th><th>Use in</th></tr></thead>
+    <tbody>
+      <tr><td><code>.dt.year</code></td><td>Integer year (2015, 2016 …)</td><td><code>groupby('Year')</code></td></tr>
+      <tr><td><code>.dt.month</code></td><td>Integer 1–12</td><td>Month filter, pivot</td></tr>
+      <tr><td><code>.dt.quarter</code></td><td>Integer 1–4</td><td>Quarterly rollup</td></tr>
+      <tr><td><code>.dt.day_name()</code></td><td>'Monday', 'Tuesday' …</td><td>Day-of-week analysis</td></tr>
+      <tr><td><code>.dt.month_name()</code></td><td>'January', 'February' …</td><td>Readable labels</td></tr>
+    </tbody>
+  </table>
+
+  <!-- Demo: format string builder -->
+  <div class="demo">
+    <div class="demo-hd">Date Format String Builder</div>
+    <label>What format is your date column stored in?</label>
+    <div class="btn-row">
+      <button class="btn btn-c btn-sm" onclick="setFmt('DD-MM-YYYY','03-11-2015')">DD-MM-YYYY</button>
+      <button class="btn btn-a btn-sm" onclick="setFmt('MM-DD-YYYY','11-03-2015')">MM-DD-YYYY</button>
+      <button class="btn btn-b btn-sm" onclick="setFmt('YYYY-MM-DD','2015-11-03')">YYYY-MM-DD</button>
+      <button class="btn btn-g btn-sm" onclick="setFmt('DD/MM/YYYY','03/11/2015')">DD/MM/YYYY</button>
+    </div>
+    <div class="demo-out" id="fmtOut">Click a format above to see the pd.to_datetime() call.</div>
+  </div>
+</div>
+
+<!-- ═══════════ S2: DATETIMEINDEX ═══════════ -->
+<div class="section" id="s2">
+  <div class="sec-header">
+    <span class="sec-num">02</span>
+    <div><div class="sec-title">DatetimeIndex <span class="hl">&amp; Time-based Slicing</span></div></div>
+  </div>
+  <p class="sec-quote">"Set the date as your index, and Pandas hands you a time machine for your data."</p>
+
+  <p>Moving the date column into the index unlocks <code>.loc['2016']</code>, <code>.loc['2016-Q1']</code>, and all resample/rolling methods. Without it, you need a boolean mask every time.</p>
+
+  <pre><code>df = df.<span class="fn">set_index</span>(<span class="str">'Order Date'</span>).<span class="fn">sort_index</span>()
+<span class="kw">print</span>(<span class="fn">type</span>(df.index))   <span class="cmt"># → pandas.DatetimeIndex</span></code></pre>
+
+  <!-- Concept diagram: DatetimeIndex vs integer index -->
+  <div class="diagram">
+    <svg viewBox="0 0 540 150" xmlns="http://www.w3.org/2000/svg" style="max-width:100%;height:auto">
+      <!-- Left: integer index -->
+      <rect x="10" y="10" width="240" height="130" rx="8" fill="#ffffff" stroke="#e8d5c4" stroke-width="1.5"/>
+      <text x="130" y="28" fill="#7a5a46" font-size="10" font-weight="700" text-anchor="middle" letter-spacing="1" font-family="sans-serif">INTEGER INDEX (default)</text>
+      <text x="30" y="50" fill="#9b3d14" font-size="11" font-weight="700" font-family="monospace">0</text>
+      <text x="55" y="50" fill="#7a5a46" font-size="11" font-family="monospace">2015-01-01  Chairs  251</text>
+      <text x="30" y="68" fill="#9b3d14" font-size="11" font-weight="700" font-family="monospace">1</text>
+      <text x="55" y="68" fill="#7a5a46" font-size="11" font-family="monospace">2015-01-01  Tables  173</text>
+      <text x="30" y="86" fill="#9b3d14" font-size="11" font-weight="700" font-family="monospace">2</text>
+      <text x="55" y="86" fill="#7a5a46" font-size="11" font-family="monospace">2015-01-04  Phones  490</text>
+      <text x="130" y="118" fill="#dc2626" font-size="10" text-anchor="middle" font-family="sans-serif">df[df['Order Date']&gt;='2016-01-01']</text>
+      <text x="130" y="132" fill="#7a5a46" font-size="9" text-anchor="middle" font-family="sans-serif">boolean mask required</text>
+
+      <!-- Right: DatetimeIndex -->
+      <rect x="290" y="10" width="240" height="130" rx="8" fill="#ffffff" stroke="rgba(155,61,20,.4)" stroke-width="1.5"/>
+      <text x="410" y="28" fill="#9b3d14" font-size="10" font-weight="700" text-anchor="middle" letter-spacing="1" font-family="sans-serif">DATETIMEINDEX (set_index)</text>
+      <text x="310" y="50" fill="#9b3d14" font-size="11" font-weight="700" font-family="monospace">2015-01-01</text>
+      <text x="430" y="50" fill="#7a5a46" font-size="11" font-family="monospace">Chairs  251</text>
+      <text x="310" y="68" fill="#9b3d14" font-size="11" font-weight="700" font-family="monospace">2015-01-01</text>
+      <text x="430" y="68" fill="#7a5a46" font-size="11" font-family="monospace">Tables  173</text>
+      <text x="310" y="86" fill="#9b3d14" font-size="11" font-weight="700" font-family="monospace">2015-01-04</text>
+      <text x="430" y="86" fill="#7a5a46" font-size="11" font-family="monospace">Phones  490</text>
+      <text x="410" y="118" fill="#15803d" font-size="10" text-anchor="middle" font-family="sans-serif">df.loc['2016-01-01':'2016-12-31']</text>
+      <text x="410" y="132" fill="#7a5a46" font-size="9" text-anchor="middle" font-family="sans-serif">one clean .loc slice — no mask needed</text>
+    </svg>
+    <figcaption>Setting the DatetimeIndex replaces boolean masking with one .loc call</figcaption>
+  </div>
+
+  <pre><code><span class="cmt"># Full year</span>
+df_2016  = df.<span class="fn">loc</span>[<span class="str">'2016-01-01'</span>:<span class="str">'2016-12-31'</span>]
+<span class="cmt"># Quarter</span>
+q1_2016  = df.<span class="fn">loc</span>[<span class="str">'2016-01-01'</span>:<span class="str">'2016-03-31'</span>]
+<span class="cmt"># Shorthand — entire year</span>
+year2017 = df.<span class="fn">loc</span>[<span class="str">'2017'</span>]</code></pre>
+
+  <div class="callout c-amber">
+    <span class="callout-icon">⚠️</span>
+    <div class="callout-body">
+      <b>Always use .loc for date access</b>
+      <p><code>df['2016']</code> raises a <strong>KeyError</strong> — Pandas treats '2016' as a column name lookup. Only <code>df.loc['2016']</code> does year-based row selection.</p>
+    </div>
+  </div>
+
+  <table class="tbl">
+    <thead><tr><th>SQL</th><th>Pandas (DatetimeIndex)</th></tr></thead>
+    <tbody>
+      <tr><td><code>WHERE date BETWEEN '2016-01-01' AND '2016-12-31'</code></td><td><code>df.loc['2016-01-01':'2016-12-31']</code></td></tr>
+      <tr><td><code>WHERE date BETWEEN '2016-01-01' AND '2016-03-31'</code></td><td><code>df.loc['2016-01-01':'2016-03-31']</code></td></tr>
+      <tr><td><code>WHERE YEAR(date) = 2017</code></td><td><code>df.loc['2017']</code></td></tr>
+    </tbody>
+  </table>
+</div>
+
+<!-- ═══════════ S3: RESAMPLE ═══════════ -->
+<div class="section" id="s3">
+  <div class="sec-header">
+    <span class="sec-num">03</span>
+    <div><div class="sec-title">Resampling <span class="hl">by Period</span></div></div>
+  </div>
+  <p class="sec-quote">"resample() is GROUP BY YEAR/MONTH compressed into one method call."</p>
+
+  <p><code>resample()</code> groups every row by which calendar bucket it falls into, then applies an aggregation. It requires a DatetimeIndex.</p>
+
+  <pre><code>daily_sales    = df[<span class="str">'Sales'</span>].<span class="fn">resample</span>(<span class="str">'D'</span>).<span class="fn">sum</span>()
+weekly_sales   = df[<span class="str">'Sales'</span>].<span class="fn">resample</span>(<span class="str">'W'</span>).<span class="fn">sum</span>()
+monthly_sales  = df[<span class="str">'Sales'</span>].<span class="fn">resample</span>(<span class="str">'ME'</span>).<span class="fn">sum</span>()
+quarterly_sales= df[<span class="str">'Sales'</span>].<span class="fn">resample</span>(<span class="str">'QE'</span>).<span class="fn">sum</span>()</code></pre>
+
+  <!-- Diagram: resample buckets -->
+  <div class="diagram">
+    <svg viewBox="0 0 540 130" xmlns="http://www.w3.org/2000/svg" style="max-width:100%;height:auto">
+      <!-- raw rows -->
+      <text x="20" y="22" fill="#9b3d14" font-size="10" font-weight="700" letter-spacing="1" font-family="sans-serif">RAW ROWS (DatetimeIndex)</text>
+      <rect x="20" y="30" width="500" height="22" rx="4" fill="#faeee4" stroke="#e8d5c4" stroke-width="1"/>
+      <text x="35" y="45" fill="#7a5a46" font-size="9" font-family="monospace">2015-01-01 251  |  2015-01-01 173  |  2015-01-04 490  |  2015-01-07 320  |  2015-02-03 180  |  ...</text>
+      <!-- arrow -->
+      <text x="270" y="70" fill="#9b3d14" font-size="12" text-anchor="middle" font-family="sans-serif">resample('ME').sum() ↓</text>
+      <!-- monthly output -->
+      <text x="20" y="90" fill="#15803d" font-size="10" font-weight="700" letter-spacing="1" font-family="sans-serif">MONTHLY BUCKETS</text>
+      <rect x="20"  y="97" width="90" height="24" rx="4" fill="rgba(155,61,20,.12)" stroke="rgba(155,61,20,.4)" stroke-width="1"/>
+      <text x="65"  y="113" fill="#9b3d14" font-size="9" text-anchor="middle" font-family="monospace">Jan-2015 20496</text>
+      <rect x="118" y="97" width="90" height="24" rx="4" fill="rgba(155,61,20,.12)" stroke="rgba(155,61,20,.4)" stroke-width="1"/>
+      <text x="163" y="113" fill="#9b3d14" font-size="9" text-anchor="middle" font-family="monospace">Feb-2015 15390</text>
+      <rect x="216" y="97" width="90" height="24" rx="4" fill="rgba(155,61,20,.12)" stroke="rgba(155,61,20,.4)" stroke-width="1"/>
+      <text x="261" y="113" fill="#9b3d14" font-size="9" text-anchor="middle" font-family="monospace">Mar-2015 39400</text>
+      <text x="330" y="113" fill="#7a5a46" font-size="10" font-family="sans-serif">… 48 rows total (4 years × 12 months)</text>
+    </svg>
+    <figcaption>resample() groups thousands of rows into 48 monthly buckets in one call</figcaption>
+  </div>
+
+  <div class="callout c-amber">
+    <span class="callout-icon">⚠️</span>
+    <div class="callout-body">
+      <b>Pandas 2.2+ alias change</b>
+      <p><code>'M'</code> and <code>'Q'</code> are deprecated. Use <code>'ME'</code> (month-end) and <code>'QE'</code> (quarter-end). Using the old aliases raises a <code>FutureWarning</code>.</p>
+    </div>
+  </div>
+
+  <table class="tbl">
+    <thead><tr><th>SQL</th><th>Pandas resample</th></tr></thead>
+    <tbody>
+      <tr><td><code>GROUP BY YEAR(date), MONTH(date)</code></td><td><code>resample('ME').sum()</code></td></tr>
+      <tr><td><code>GROUP BY YEAR(date), QUARTER(date)</code></td><td><code>resample('QE').sum()</code></td></tr>
+      <tr><td>Daily totals</td><td><code>resample('D').sum()</code></td></tr>
+      <tr><td>Weekly totals</td><td><code>resample('W').sum()</code></td></tr>
+    </tbody>
+  </table>
+
+  <!-- Demo: resample alias picker -->
+  <div class="demo">
+    <div class="demo-hd">Resample Alias Reference</div>
+    <label>Select a bucket size:</label>
+    <div class="btn-row">
+      <button class="btn btn-c btn-sm" onclick="showResample('D','Daily','resample(\'D\').sum()','one row per calendar day')">Daily</button>
+      <button class="btn btn-a btn-sm" onclick="showResample('W','Weekly','resample(\'W\').sum()','one row per week (Sunday end)')">Weekly</button>
+      <button class="btn btn-b btn-sm" onclick="showResample('ME','Monthly','resample(\'ME\').sum()','one row per month-end (Jan 31, Feb 28…)')">Monthly</button>
+      <button class="btn btn-g btn-sm" onclick="showResample('QE','Quarterly','resample(\'QE\').sum()','one row per quarter-end (Mar 31, Jun 30…)')">Quarterly</button>
+    </div>
+    <div class="demo-out" id="resampleOut">Select a bucket size above.</div>
+  </div>
+</div>
+
+<!-- ═══════════ S4: ROLLING ═══════════ -->
+<div class="section" id="s4">
+  <div class="sec-header">
+    <span class="sec-num">04</span>
+    <div><div class="sec-title">Rolling Window <span class="hl">Averages</span></div></div>
+  </div>
+  <p class="sec-quote">"rolling() is a sliding window that smooths noise so trends become visible."</p>
+
+  <p>The VP asked to <em>"smooth out the noise"</em> on the daily chart. A rolling average replaces each point with the mean of the N days before it, turning a jagged line into a readable trend.</p>
+
+  <pre><code>daily   = df[<span class="str">'Sales'</span>].<span class="fn">resample</span>(<span class="str">'D'</span>).<span class="fn">sum</span>()   <span class="cmt"># zero-filled by default</span>
+roll_7  = daily.<span class="fn">rolling</span>(<span class="num">7</span>).<span class="fn">mean</span>()           <span class="cmt"># 7-day window</span>
+roll_30 = daily.<span class="fn">rolling</span>(<span class="num">30</span>).<span class="fn">mean</span>()          <span class="cmt"># 30-day window</span></code></pre>
+
+  <!-- Diagram: rolling window animation concept -->
+  <div class="diagram">
+    <svg viewBox="0 0 540 160" xmlns="http://www.w3.org/2000/svg" style="max-width:100%;height:auto">
+      <!-- raw bars -->
+      <text x="270" y="16" fill="#9b3d14" font-size="10" font-weight="700" text-anchor="middle" letter-spacing="1" font-family="sans-serif">DAILY SALES → 7-DAY ROLLING AVERAGE</text>
+      <!-- day bars -->
+      <rect x="30"  y="80" width="22" height="40" fill="rgba(155,61,20,.3)" rx="2"/>
+      <rect x="60"  y="65" width="22" height="55" fill="rgba(155,61,20,.3)" rx="2"/>
+      <rect x="90"  y="90" width="22" height="30" fill="rgba(155,61,20,.3)" rx="2"/>
+      <rect x="120" y="55" width="22" height="65" fill="rgba(155,61,20,.3)" rx="2"/>
+      <rect x="150" y="75" width="22" height="45" fill="rgba(155,61,20,.3)" rx="2"/>
+      <rect x="180" y="85" width="22" height="35" fill="rgba(155,61,20,.3)" rx="2"/>
+      <rect x="210" y="60" width="22" height="60" fill="rgba(155,61,20,.3)" rx="2"/>
+      <rect x="240" y="70" width="22" height="50" fill="rgba(155,61,20,.3)" rx="2"/>
+      <rect x="270" y="50" width="22" height="70" fill="rgba(155,61,20,.3)" rx="2"/>
+      <rect x="300" y="80" width="22" height="40" fill="rgba(155,61,20,.3)" rx="2"/>
+      <rect x="330" y="62" width="22" height="58" fill="rgba(155,61,20,.3)" rx="2"/>
+      <rect x="360" y="78" width="22" height="42" fill="rgba(155,61,20,.3)" rx="2"/>
+      <rect x="390" y="45" width="22" height="75" fill="rgba(155,61,20,.3)" rx="2"/>
+      <rect x="420" y="68" width="22" height="52" fill="rgba(155,61,20,.3)" rx="2"/>
+      <rect x="450" y="82" width="22" height="38" fill="rgba(155,61,20,.3)" rx="2"/>
+      <rect x="480" y="55" width="22" height="65" fill="rgba(155,61,20,.3)" rx="2"/>
+      <!-- rolling window highlight -->
+      <rect x="210" y="38" width="156" height="90" fill="rgba(196,81,28,.08)" stroke="#c4511c" stroke-width="1.5" rx="4" stroke-dasharray="4,2"/>
+      <text x="288" y="34" fill="#c4511c" font-size="9" text-anchor="middle" font-family="sans-serif">7-day window slides →</text>
+      <!-- smooth line -->
+      <polyline points="41,105 71,92 101,88 131,80 161,78 191,76 221,72 251,70 281,66 311,68 341,67 371,66 401,63 431,65 461,67 491,65"
+                fill="none" stroke="#9b3d14" stroke-width="2.5"/>
+      <!-- baseline -->
+      <line x1="20" y1="120" x2="520" y2="120" stroke="#e8d5c4" stroke-width="1"/>
+      <!-- legend -->
+      <rect x="30" y="138" width="12" height="8" fill="rgba(155,61,20,.3)" rx="1"/>
+      <text x="46" y="146" fill="#7a5a46" font-size="9" font-family="sans-serif">Daily (noisy)</text>
+      <line x1="130" y1="142" x2="150" y2="142" stroke="#9b3d14" stroke-width="2"/>
+      <text x="155" y="146" fill="#7a5a46" font-size="9" font-family="sans-serif">Rolling average (smooth)</text>
+    </svg>
+    <figcaption>The window slides one day at a time — each point becomes the mean of the 7 days before it</figcaption>
+  </div>
+
+  <div class="callout c-amber">
+    <span class="callout-icon">⚠️</span>
+    <div class="callout-body">
+      <b>First N-1 values are NaN</b>
+      <p><code>rolling(7)</code> needs 7 days before it can compute the first average — rows 0–5 are NaN, first valid result at row 6. Add <code>min_periods=1</code> for partial averages (SQL-matching behaviour).</p>
+    </div>
+  </div>
+
+  <table class="tbl">
+    <thead><tr><th>Window</th><th>Shows</th><th>Use for</th></tr></thead>
+    <tbody>
+      <tr><td><code>rolling(7)</code></td><td>7-day average</td><td>Week-to-week pattern, day-of-week effects</td></tr>
+      <tr><td><code>rolling(30)</code></td><td>30-day average</td><td>Monthly trend — the VP chart</td></tr>
+      <tr><td><code>rolling(7, min_periods=1)</code></td><td>Partial averages for first 6 rows</td><td>When you need SQL-matching behaviour at the start</td></tr>
+    </tbody>
+  </table>
+
+  <!-- Demo: NaN countdown -->
+  <div class="demo">
+    <div class="demo-hd">NaN Count for rolling(N)</div>
+    <label>Window size N: <span id="nLabel">7</span></label>
+    <input type="range" min="2" max="30" value="7" id="windowSlider" oninput="updateNaN()"/>
+    <div class="demo-out" id="nanOut"></div>
+  </div>
+</div>
+
+<!-- ═══════════ S5: PERIOD-OVER-PERIOD ═══════════ -->
+<div class="section" id="s5">
+  <div class="sec-header">
+    <span class="sec-num">05</span>
+    <div><div class="sec-title">Period-over-Period <span class="hl">Comparisons</span></div></div>
+  </div>
+  <p class="sec-quote">"shift(1) is LAG(1) from SQL. pct_change() is the formula every analyst uses for MoM growth."</p>
+
+  <h3>shift() — the LAG function</h3>
+  <p><code>shift(1)</code> moves every value down by one row — giving you the previous period's number alongside the current one. The foundation of all period-over-period analysis.</p>
+
+  <pre><code>monthly = df[<span class="str">'Sales'</span>].<span class="fn">resample</span>(<span class="str">'ME'</span>).<span class="fn">sum</span>()
+
+monthly_df = pd.<span class="fn">DataFrame</span>({
+    <span class="str">'sales'</span>:      monthly,
+    <span class="str">'prev_month'</span>: monthly.<span class="fn">shift</span>(<span class="num">1</span>),  <span class="cmt"># LAG(1)</span>
+})</code></pre>
+
+  <div class="out">
+    <div class="out-lbl">OUTPUT (head 4)</div>
+                 sales  prev_month
+Order Date
+2015-01-31   20496.37         NaN
+2015-02-28   15389.83    20496.37
+2015-03-31   39400.19    15389.83
+2015-04-30   53633.35    39400.19</div>
+
+  <h3>pct_change() — MoM and YoY</h3>
+  <p><code>pct_change()</code> computes the % change vs N periods ago. <code>periods=12</code> on monthly data = same month last year (YoY). <code>periods=4</code> on quarterly data = same quarter last year.</p>
+
+  <pre><code>mom = monthly.<span class="fn">pct_change</span>()          * <span class="num">100</span>  <span class="cmt"># MoM %</span>
+yoy = monthly.<span class="fn">pct_change</span>(periods=<span class="num">12</span>) * <span class="num">100</span>  <span class="cmt"># YoY %</span>
+qoq_yoy = df[<span class="str">'Sales'</span>].<span class="fn">resample</span>(<span class="str">'QE'</span>).<span class="fn">sum</span>() \
+                      .<span class="fn">pct_change</span>(periods=<span class="num">4</span>) * <span class="num">100</span>  <span class="cmt"># QoQ YoY %</span></code></pre>
+
+  <table class="tbl">
+    <thead><tr><th>Call</th><th>Compares each row to…</th><th>Name</th></tr></thead>
+    <tbody>
+      <tr><td><code>pct_change()</code></td><td>1 row back</td><td>Month-over-Month (on monthly data)</td></tr>
+      <tr><td><code>pct_change(periods=12)</code></td><td>12 rows back</td><td>Year-over-Year (on monthly data)</td></tr>
+      <tr><td><code>pct_change(periods=4)</code></td><td>4 rows back</td><td>Same-quarter last year (on quarterly data)</td></tr>
+      <tr><td><code>shift(1)</code></td><td>1 row back (LAG 1)</td><td>Previous period raw value</td></tr>
+    </tbody>
+  </table>
+
+  <!-- The seasonality trap callout -->
+  <div class="callout c-red">
+    <span class="callout-icon">🔦</span>
+    <div class="callout-body">
+      <b>The seasonality trap — compare like with like</b>
+      <p>December sales dropping 15% vs last December looks alarming — until you check the pivot table and see <strong>November and December always peak, January always crashes</strong>. That MoM drop from December to January every year is the calendar, not the business. The right comparison for Q1 2019 is not last December — it is Q1 2018.</p>
+    </div>
+  </div>
+
+  <!-- Concept: SQL equivalents -->
+  <table class="tbl">
+    <thead><tr><th>SQL</th><th>Pandas</th></tr></thead>
+    <tbody>
+      <tr><td><code>LAG(total_sales, 1) OVER (ORDER BY month)</code></td><td><code>monthly.shift(1)</code></td></tr>
+      <tr><td><code>LEAD(total_sales, 1) OVER (ORDER BY month)</code></td><td><code>monthly.shift(-1)</code></td></tr>
+      <tr><td>MoM % change formula manually</td><td><code>monthly.pct_change() * 100</code></td></tr>
+    </tbody>
+  </table>
+
+  <!-- Demo: periods explorer -->
+  <div class="demo">
+    <div class="demo-hd">pct_change periods Explorer</div>
+    <label>What comparison do you need?</label>
+    <div class="btn-row">
+      <button class="btn btn-c btn-sm" onclick="showPct('MoM','monthly','1','month-over-month')">MoM</button>
+      <button class="btn btn-a btn-sm" onclick="showPct('YoY','monthly','12','year-over-year (same month last year)')">YoY</button>
+      <button class="btn btn-b btn-sm" onclick="showPct('QoQ YoY','quarterly','4','same quarter last year')">QoQ YoY</button>
+    </div>
+    <div class="demo-out" id="pctOut">Select a comparison type above.</div>
+  </div>
+</div>
+
+<!-- ═══════════ S6: FILL STRATEGIES ═══════════ -->
+<div class="section" id="s6">
+  <div class="sec-header">
+    <span class="sec-num">06</span>
+    <div><div class="sec-title">Fill Strategies <span class="hl">for Time Series Gaps</span></div></div>
+  </div>
+  <p class="sec-quote">"Missing values in time series aren't random — they carry context. The right fill preserves it."</p>
+
+  <p><code>resample('D').sum()</code> silently <strong>zero-fills</strong> days with no orders by default. Add <code>min_count=1</code> to get <strong>NaN</strong> for empty days instead — then you can decide how to treat them.</p>
+
+  <pre><code><span class="cmt"># Default: zero-filled</span>
+daily_zero = df[<span class="str">'Sales'</span>].<span class="fn">resample</span>(<span class="str">'D'</span>).<span class="fn">sum</span>()
+
+<span class="cmt"># With min_count=1: NaN for days with no orders</span>
+daily = df[<span class="str">'Sales'</span>].<span class="fn">resample</span>(<span class="str">'D'</span>).<span class="fn">sum</span>(min_count=<span class="num">1</span>)
+<span class="kw">print</span>(daily.<span class="fn">isna</span>().<span class="fn">sum</span>())   <span class="cmt"># → 16 missing days over 4 years</span></code></pre>
+
+  <!-- Diagram: 4 fill strategies -->
+  <div class="diagram">
+    <svg viewBox="0 0 540 170" xmlns="http://www.w3.org/2000/svg" style="max-width:100%;height:auto">
+      <text x="270" y="16" fill="#9b3d14" font-size="10" font-weight="700" text-anchor="middle" letter-spacing="1" font-family="sans-serif">FOUR FILL STRATEGIES FOR A GAP</text>
+      <!-- x axis labels -->
+      <text x="60"  y="145" fill="#7a5a46" font-size="9" text-anchor="middle" font-family="sans-serif">Mon</text>
+      <text x="130" y="145" fill="#7a5a46" font-size="9" text-anchor="middle" font-family="sans-serif">Tue</text>
+      <text x="200" y="145" fill="#dc2626" font-size="9" text-anchor="middle" font-weight="700" font-family="sans-serif">Wed(gap)</text>
+      <text x="270" y="145" fill="#7a5a46" font-size="9" text-anchor="middle" font-family="sans-serif">Thu</text>
+      <text x="340" y="145" fill="#7a5a46" font-size="9" text-anchor="middle" font-family="sans-serif">Fri</text>
+
+      <!-- known bars -->
+      <rect x="40"  y="90" width="40" height="45" fill="rgba(155,61,20,.4)" rx="2"/>
+      <rect x="110" y="70" width="40" height="65" fill="rgba(155,61,20,.4)" rx="2"/>
+      <rect x="250" y="80" width="40" height="55" fill="rgba(155,61,20,.4)" rx="2"/>
+      <rect x="320" y="60" width="40" height="75" fill="rgba(155,61,20,.4)" rx="2"/>
+
+      <!-- gap slot outline -->
+      <rect x="180" y="45" width="40" height="90" fill="rgba(220,38,38,.06)" stroke="#dc2626" stroke-width="1" stroke-dasharray="4,2" rx="2"/>
+
+      <!-- fill labels -->
+      <!-- ffill: same as Tue -->
+      <rect x="390" y="78" width="30" height="30" fill="rgba(21,128,61,.5)" rx="2"/>
+      <text x="405" y="97" fill="#ffffff" font-size="7" text-anchor="middle" font-family="sans-serif">ffill</text>
+      <text x="405" y="118" fill="#15803d" font-size="8" text-anchor="middle" font-family="sans-serif">= Mon value</text>
+
+      <!-- zero fill -->
+      <rect x="430" y="128" width="30" height="8" fill="rgba(100,100,100,.4)" rx="2"/>
+      <text x="445" y="122" fill="#7a5a46" font-size="8" text-anchor="middle" font-family="sans-serif">0 fill</text>
+      <text x="445" y="142" fill="#7a5a46" font-size="8" text-anchor="middle" font-family="sans-serif">= zero</text>
+
+      <!-- interp label -->
+      <circle cx="200" cy="85" r="5" fill="rgba(29,78,216,.6)"/>
+      <text x="210" y="68" fill="#1d4ed8" font-size="8" font-family="sans-serif">interp</text>
+      <text x="210" y="78" fill="#1d4ed8" font-size="8" font-family="sans-serif">= midpoint</text>
+
+      <!-- baseline -->
+      <line x1="30" y1="135" x2="380" y2="135" stroke="#e8d5c4" stroke-width="1"/>
+    </svg>
+    <figcaption>The same gap can be filled four different ways — the choice depends on what "no data" means in your context</figcaption>
+  </div>
+
+  <table class="tbl">
+    <thead><tr><th>Method</th><th>What it does</th><th>Use when…</th></tr></thead>
+    <tbody>
+      <tr><td><code>ffill()</code></td><td>Carry the last known value forward</td><td>Price data, sensor readings — the last state persists until updated</td></tr>
+      <tr><td><code>bfill()</code></td><td>Use the next known value backward</td><td>When future data is already available (back-filling a historic series)</td></tr>
+      <tr><td><code>fillna(0)</code></td><td>Fill with zero — explicit "no orders"</td><td>Revenue / orders: no order = zero revenue, not missing</td></tr>
+      <tr><td><code>interpolate(method='time')</code></td><td>Estimate a gradual transition between neighbours</td><td>Sensor readings, temperature, continuous signals</td></tr>
+    </tbody>
+  </table>
+
+  <!-- Demo: fill strategy chooser -->
+  <div class="demo">
+    <div class="demo-hd">Fill Strategy Chooser</div>
+    <label>What does a missing day mean in your dataset?</label>
+    <div class="btn-row">
+      <button class="btn btn-c btn-sm" onclick="chooseFill('orders')">No orders placed</button>
+      <button class="btn btn-a btn-sm" onclick="chooseFill('sensor')">Sensor dropout / signal gap</button>
+      <button class="btn btn-b btn-sm" onclick="chooseFill('price')">Stock price / last-state data</button>
+      <button class="btn btn-g btn-sm" onclick="chooseFill('backfill')">Back-filling historic data</button>
+    </div>
+    <div class="demo-out" id="fillOut">Select what a missing value means in your context.</div>
+  </div>
+</div>
+
+<!-- ═══════════ S7: QUIZ ═══════════ -->
+<div class="section" id="s7">
+  <div class="sec-header">
+    <span class="sec-num">07</span>
+    <div><div class="sec-title">Check Your <span class="hl">Understanding</span></div></div>
+  </div>
+
+  <!-- Q1 -->
+  <div class="q-card">
+    <div class="q-text">1. Your date column is stored as <code>"03-11-2015"</code> (DD-MM-YYYY). You run <code>pd.to_datetime(df['date'])</code> with no other arguments. What date gets stored?</div>
+    <div class="q-opt" onclick="pick(this,'q1','A')"><input type="radio" name="q1"> A. 3 November 2015 — Pandas auto-detects DD-MM-YYYY</div>
+    <div class="q-opt" onclick="pick(this,'q1','B')"><input type="radio" name="q1"> B. 11 March 2015 — Pandas defaults to MM-DD-YYYY, a silent wrong-date bug</div>
+    <div class="q-opt" onclick="pick(this,'q1','C')"><input type="radio" name="q1"> C. ValueError — ambiguous date format</div>
+    <div class="q-opt" onclick="pick(this,'q1','D')"><input type="radio" name="q1"> D. 3 November 2015 — dayfirst=True is the default</div>
+    <div class="q-fb" id="q1-fb"></div>
+  </div>
+
+  <!-- Q2 -->
+  <div class="q-card">
+    <div class="q-text">2. What does <code>df['Sales'].resample('ME').sum()</code> return?</div>
+    <div class="q-opt" onclick="pick(this,'q2','A')"><input type="radio" name="q2"> A. One row per order, resampled to the nearest month</div>
+    <div class="q-opt" onclick="pick(this,'q2','B')"><input type="radio" name="q2"> B. One row per calendar month, summed to that month's total</div>
+    <div class="q-opt" onclick="pick(this,'q2','C')"><input type="radio" name="q2"> C. One row per week ending on a Monday</div>
+    <div class="q-opt" onclick="pick(this,'q2','D')"><input type="radio" name="q2"> D. One row per year with the annual total</div>
+    <div class="q-fb" id="q2-fb"></div>
+  </div>
+
+  <!-- Q3 -->
+  <div class="q-card">
+    <div class="q-text">3. <code>daily.rolling(7).mean()</code> — how many NaN values appear at the start?</div>
+    <div class="q-opt" onclick="pick(this,'q3','A')"><input type="radio" name="q3"> A. 0 — rolling fills backward</div>
+    <div class="q-opt" onclick="pick(this,'q3','B')"><input type="radio" name="q3"> B. 1 — only the very first row</div>
+    <div class="q-opt" onclick="pick(this,'q3','C')"><input type="radio" name="q3"> C. 6 — rows 0–5 have fewer than 7 prior values</div>
+    <div class="q-opt" onclick="pick(this,'q3','D')"><input type="radio" name="q3"> D. 7 — a full window's worth</div>
+    <div class="q-fb" id="q3-fb"></div>
+  </div>
+
+  <!-- Q4 -->
+  <div class="q-card">
+    <div class="q-text">4. You have a monthly sales Series. What does <code>monthly.pct_change(periods=12)</code> compute?</div>
+    <div class="q-opt" onclick="pick(this,'q4','A')"><input type="radio" name="q4"> A. Month-over-month % change</div>
+    <div class="q-opt" onclick="pick(this,'q4','B')"><input type="radio" name="q4"> B. Year-over-year % change (same month last year)</div>
+    <div class="q-opt" onclick="pick(this,'q4','C')"><input type="radio" name="q4"> C. Rolling 12-month cumulative total</div>
+    <div class="q-opt" onclick="pick(this,'q4','D')"><input type="radio" name="q4"> D. Quarter-over-quarter YoY % change</div>
+    <div class="q-fb" id="q4-fb"></div>
+  </div>
+
+  <!-- Q5 -->
+  <div class="q-card">
+    <div class="q-text">5. You have daily retail sales with no orders on some days. Which fill strategy gives the most accurate rolling average?</div>
+    <div class="q-opt" onclick="pick(this,'q5','A')"><input type="radio" name="q5"> A. <code>ffill()</code> — carry last known sales forward</div>
+    <div class="q-opt" onclick="pick(this,'q5','B')"><input type="radio" name="q5"> B. <code>fillna(0)</code> — no orders = zero revenue</div>
+    <div class="q-opt" onclick="pick(this,'q5','C')"><input type="radio" name="q5"> C. <code>bfill()</code> — use next day's value</div>
+    <div class="q-opt" onclick="pick(this,'q5','D')"><input type="radio" name="q5"> D. <code>interpolate()</code> — estimate from neighbours</div>
+    <div class="q-fb" id="q5-fb"></div>
+  </div>
+</div>
+
+<!-- ═══════════ SUMMARY ═══════════ -->
+<div class="section">
+  <div class="sec-header">
+    <span class="sec-num">★</span>
+    <div><div class="sec-title">Running <span class="hl">Toolkit</span></div></div>
+  </div>
+  <div class="s-row"><span class="s-q">Parse dates safely</span><span class="s-code">pd.to_datetime(col, format='%d-%m-%Y')</span></div>
+  <div class="s-row"><span class="s-q">Extract date parts</span><span class="s-code">.dt.year / .dt.month / .dt.quarter / .dt.day_name()</span></div>
+  <div class="s-row"><span class="s-q">Create DatetimeIndex</span><span class="s-code">df.set_index('Order Date').sort_index()</span></div>
+  <div class="s-row"><span class="s-q">Time-based slice</span><span class="s-code">df.loc['2016-01-01':'2016-12-31'] or df.loc['2016']</span></div>
+  <div class="s-row"><span class="s-q">Monthly totals (SQL GROUP BY)</span><span class="s-code">resample('ME').sum()</span></div>
+  <div class="s-row"><span class="s-q">Quarterly totals</span><span class="s-code">resample('QE').sum()</span></div>
+  <div class="s-row"><span class="s-q">Daily, true NaN for gaps</span><span class="s-code">resample('D').sum(min_count=1)</span></div>
+  <div class="s-row"><span class="s-q">Smooth daily noise</span><span class="s-code">rolling(7).mean() / rolling(30).mean()</span></div>
+  <div class="s-row"><span class="s-q">SQL-matching rolling avg</span><span class="s-code">rolling(N, min_periods=1).mean()</span></div>
+  <div class="s-row"><span class="s-q">Previous period (LAG 1)</span><span class="s-code">shift(1)</span></div>
+  <div class="s-row"><span class="s-q">Month-over-Month %</span><span class="s-code">pct_change() * 100</span></div>
+  <div class="s-row"><span class="s-q">Year-over-Year %</span><span class="s-code">pct_change(periods=12) * 100</span></div>
+  <div class="s-row"><span class="s-q">QoQ YoY % (quarterly)</span><span class="s-code">resample('QE').sum().pct_change(periods=4) * 100</span></div>
+  <div class="s-row"><span class="s-q">Seasonality check</span><span class="s-code">pivot_table(index='Month', columns='Year', aggfunc='sum')</span></div>
+  <div class="s-row"><span class="s-q">Fill: carry forward</span><span class="s-code">ffill()</span></div>
+  <div class="s-row"><span class="s-q">Fill: zero revenue</span><span class="s-code">fillna(0)</span></div>
+  <div class="s-row"><span class="s-q">Fill: smooth estimate</span><span class="s-code">interpolate(method='time')</span></div>
+</div>
+
+<script>
+// ── Progress bar ──────────────────────────────────────
+window.addEventListener('scroll', () => {
+  const p = document.getElementById('progressBar');
+  const h = document.documentElement;
+  p.style.width = (h.scrollTop / (h.scrollHeight - h.clientHeight) * 100) + '%';
+});
+
+// ── Date format demo ──────────────────────────────────
+const fmtMap = {
+  'DD-MM-YYYY': { code: '%d-%m-%Y', eg: '03-11-2015 → 3 Nov 2015 ✅' },
+  'MM-DD-YYYY': { code: '%m-%d-%Y', eg: '03-11-2015 → 11 Mar 2015 ✅' },
+  'YYYY-MM-DD': { code: '%Y-%m-%d', eg: '2015-11-03 → 3 Nov 2015 ✅' },
+  'DD/MM/YYYY': { code: '%d/%m/%Y', eg: '03/11/2015 → 3 Nov 2015 ✅' },
+};
+function setFmt(fmt, eg) {
+  const m = fmtMap[fmt];
+  document.getElementById('fmtOut').textContent =
+    `Format: ${fmt}\n\npd.to_datetime(df['date'], format='${m.code}')\n\nResult: ${m.eg}`;
+}
+
+// ── Resample alias demo ───────────────────────────────
+function showResample(alias, label, code, note) {
+  document.getElementById('resampleOut').textContent =
+    `Alias: '${alias}'  →  ${label}\n\n${code}\n\n→ ${note}`;
+}
+
+// ── Rolling NaN demo ──────────────────────────────────
+function updateNaN() {
+  const n = parseInt(document.getElementById('windowSlider').value);
+  document.getElementById('nLabel').textContent = n;
+  const nans = n - 1;
+  const firstValid = n - 1;
+  document.getElementById('nanOut').textContent =
+    `rolling(${n}).mean()\n\nNaN values at start: ${nans}  (rows 0–${nans - 1})\nFirst valid result:   row ${firstValid} (the ${n}th row)\n\nFix for partial averages:\nrolling(${n}, min_periods=1).mean()`;
+}
+updateNaN();
+
+// ── pct_change periods demo ───────────────────────────
+function showPct(name, freq, periods, desc) {
+  const freqStr = freq === 'monthly' ? "resample('ME').sum()" : "resample('QE').sum()";
+  document.getElementById('pctOut').textContent =
+    `${name}  →  pct_change(periods=${periods}) * 100\n\n` +
+    `# Full code:\ns = df['Sales'].${freqStr}\n${name.toLowerCase().replace(/ /g,'_')} = s.pct_change(periods=${periods}) * 100\n\n` +
+    `Compares each row to ${periods} row(s) back\n→ ${desc}`;
+}
+
+// ── Fill strategy demo ────────────────────────────────
+const fillAdvice = {
+  orders:  { method: 'fillna(0)', reason: 'No orders on that day = zero revenue. Zero is accurate.', warn: 'Using ffill here would overstate revenue on the missing day.' },
+  sensor:  { method: "interpolate(method='time')", reason: 'The signal was continuous — a smooth estimate between neighbours is closest to reality.', warn: 'fillna(0) would add a false floor to the rolling average.' },
+  price:   { method: 'ffill()', reason: 'The price did not change until the next trade — carry the last known price forward.', warn: 'interpolate() would invent price movement that did not happen.' },
+  backfill:{ method: 'bfill()', reason: 'You already have the next known value — fill backward from it.', warn: 'Only valid when future data is already in hand.' },
+};
+function chooseFill(type) {
+  const a = fillAdvice[type];
+  document.getElementById('fillOut').textContent =
+    `Recommended method: ${a.method}\n\nWhy: ${a.reason}\n\nWatch out: ${a.warn}`;
+}
+
+// ── Quiz ─────────────────────────────────────────────
+const answers = { q1:'B', q2:'B', q3:'C', q4:'B', q5:'B' };
+const feedback = {
+  q1: {
+    A: '✗ Pandas does NOT auto-detect DD-MM-YYYY. Without format=, it defaults to MM-DD-YYYY.',
+    B: '✅ Correct — without format=, Pandas assumes MM-DD-YYYY. "03-11-2015" → month=03, day=11 → 11 March 2015. No error — a silent wrong-date bug. Fix: format=\'%d-%m-%Y\'.',
+    C: '✗ Pandas does not raise an error here — it silently swaps day and month.',
+    D: '✗ dayfirst=True is NOT the default. The default is month-first (American format).',
+  },
+  q2: {
+    A: '✗ resample() groups rows into calendar buckets, it does not keep one row per order.',
+    B: '✅ Correct — resample(\'ME\').sum() groups every row into its calendar month and sums. 48 rows for 4 years of monthly data.',
+    C: '✗ That would be resample(\'W\'). \'ME\' means month-end.',
+    D: '✗ That would be resample(\'YE\'). \'ME\' is month-end.',
+  },
+  q3: {
+    A: '✗ rolling() does not fill backward — it needs N prior values before it can compute.',
+    B: '✗ Only 1 NaN would mean the first row is missing. rolling(7) needs 7 days.',
+    C: '✅ Correct — rows 0–5 (6 rows) each have fewer than 7 prior values. The first valid result is at row 6. Use rolling(7, min_periods=1) for partial averages.',
+    D: '✗ Off by one — it is 6 NaNs (rows 0–5), not 7.',
+  },
+  q4: {
+    A: '✗ pct_change() with no arguments is MoM. periods=12 looks 12 rows back.',
+    B: '✅ Correct — periods=12 on monthly data compares each month to the same month 12 rows (one year) earlier. That is YoY.',
+    C: '✗ pct_change() computes a ratio, not a cumulative total. Use rolling(12).sum() for a rolling total.',
+    D: '✗ QoQ YoY uses pct_change(periods=4) on quarterly data, not periods=12 on monthly.',
+  },
+  q5: {
+    A: '✗ ffill() carries yesterday\'s sales onto a day with no orders — that overstates the rolling average.',
+    B: '✅ Correct — for retail sales data, a day with no orders genuinely earned zero revenue. fillna(0) is accurate and keeps the rolling average honest.',
+    C: '✗ bfill() uses the next day\'s value — that also overstates the missing day.',
+    D: '✗ interpolate() estimates a smooth transition — but zero revenue days are not a smooth transition; they are actual zeros.',
+  },
+};
+
+function pick(el, qid, choice) {
+  const siblings = el.parentNode.querySelectorAll('.q-opt');
+  siblings.forEach(s => { s.classList.remove('correct','wrong'); s.querySelector('input').checked = false; });
+  el.querySelector('input').checked = true;
+  const isCorrect = choice === answers[qid];
+  el.classList.add(isCorrect ? 'correct' : 'wrong');
+  const fb = document.getElementById(qid + '-fb');
+  fb.textContent = feedback[qid][choice];
+  fb.className = 'q-fb show ' + (isCorrect ? 'ok' : 'err');
+}
+</script>
+</body>
+</html>
